@@ -1,18 +1,14 @@
 package com.example.qrgrenertor.domain.repository
 
+import com.example.qrgrenertor.domain.model.QRCode
+import com.example.qrgrenertor.domain.model.QRHistory
+import com.example.qrgrenertor.domain.model.Result
 
-
-import android.graphics.Bitmap
-import com.example.qrgrenertor.data.generator.QRCodeGenerator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
-class QRCodeRepository(
-    private val qrCodeGenerator: QRCodeGenerator = QRCodeGenerator()
-) {
-    suspend fun generateQRCode(text: String): Bitmap? {
-        return withContext(Dispatchers.Default) {
-            qrCodeGenerator.generateQRCode(text)
-        }
-    }
+interface QRCodeRepository {
+    suspend fun generateQR(content: String): Result<QRCode>
+    suspend fun saveQR(qrCode: QRCode): Result<Unit>
+    suspend fun getQRHistory(): Result<List<QRHistory>>
+    suspend fun getQRById(id: String): Result<QRCode>
+    suspend fun deleteQR(id: String): Result<Unit>
+    suspend fun syncData(): Result<Unit>
 }
