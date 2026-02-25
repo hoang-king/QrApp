@@ -1,11 +1,18 @@
 package com.example.qrgrenertor.presentation.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
@@ -17,13 +24,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.qrgrenertor.domain.model.QRSourceType
 import com.example.qrgrenertor.presentation.ui.components.GlassCard
 import com.example.qrgrenertor.presentation.ui.components.GradientButton
 import com.example.qrgrenertor.presentation.ui.components.StepProgressBar
 import com.example.qrgrenertor.presentation.ui.theme.QRAppColors
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun QRContentInputScreen(
@@ -34,285 +51,175 @@ fun QRContentInputScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit
 ) {
-    var content by remember { mutableStateOf("") }
-    
-    // Initial sync with ViewModel state if needed, but using the passed parameters is better
-    // For local state management within this composable:
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var qrName by remember { mutableStateOf(name) }
-    var qrContent by remember { mutableStateOf("") }
+    val scrollState = rememberScrollState()
+
+    var url by remember { mutableStateOf("") }
+    var isUploading by remember { mutableStateOf(false) }
+    var formattedContentState by remember { mutableStateOf("") }
     
-    // Update local state when parent state changes
-    LaunchedEffect(name) {
-        qrName = name
+    var ssid by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var security by remember { mutableStateOf("WPA") }
+    
+    var firstName by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var emailAddr by remember { mutableStateOf("") }
+    var company by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    
+    var emailSubject by remember { mutableStateOf("") }
+    var emailBody by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+
+    var latitude by remember { mutableStateOf("21.0285") }
+    var longitude by remember { mutableStateOf("105.8542") }
+    val markerState = rememberMarkerState(position = LatLng(21.0285, 105.8542))
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(21.0285, 105.8542), 15f)
     }
 
-    val placeholders = mapOf(
-        QRSourceType.URL to "https://example.com",
-        QRSourceType.WIFI to "Tên mạng WiFi",
-        QRSourceType.EMAIL to "email@example.com",
-        QRSourceType.PHONE to "+84123456789",
-        QRSourceType.SMS to "Nhập nội dung tin nhắn",
-        QRSourceType.CONTACT to "Tên người liên hệ",
-        QRSourceType.MUSIC to "https://music.example.com",
-        QRSourceType.PDF to "https://pdf.example.com",
-        QRSourceType.IMAGE to "https://image.example.com",
-        QRSourceType.FACEBOOK to "https://facebook.com/username",
-        QRSourceType.INSTAGRAM to "https://instagram.com/username",
-        QRSourceType.VCARD to "Họ và tên đầy đủ"
-    )
+    var selectedFileName by remember { mutableStateOf("") }
+    var selectedFileSize by remember { mutableStateOf(0L) }
 
-    val typeIcons: Map<QRSourceType, ImageVector> = mapOf(
-        QRSourceType.URL to Icons.Outlined.Link,
-        QRSourceType.WIFI to Icons.Outlined.Wifi,
-        QRSourceType.EMAIL to Icons.Outlined.Email,
-        QRSourceType.PHONE to Icons.Outlined.Phone,
-        QRSourceType.SMS to Icons.Outlined.Sms,
-        QRSourceType.CONTACT to Icons.Outlined.Contacts,
-        QRSourceType.MUSIC to Icons.Outlined.MusicNote,
-        QRSourceType.PDF to Icons.Outlined.PictureAsPdf,
-        QRSourceType.IMAGE to Icons.Outlined.PhotoLibrary,
-        QRSourceType.FACEBOOK to Icons.Outlined.Facebook,
-        QRSourceType.INSTAGRAM to Icons.Outlined.CameraAlt,
-        QRSourceType.VCARD to Icons.Outlined.Person
-    )
-
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(QRAppColors.DarkBackground)
-            .padding(horizontal = 16.dp)
-            .statusBarsPadding()
-    ) {
-        // Step Progress
-        StepProgressBar(currentStep = 2)
-
-        // Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-        ) {
-            IconButton(
-                onClick = onPrevious,
-                colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = QRAppColors.TextSecondary
-                )
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Quay lại"
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Nhập nội dung",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = selectedType.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = QRAppColors.PrimaryStart
-                )
+    val filePickerLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            val fileName = FileUtils.getFileName(context, it) ?: "Unknown"
+            val fileSize = FileUtils.getFileSize(context, it)
+            val maxSizeBytes = if (selectedType == QRSourceType.PDF) 100 * 1024 * 1024L else 10 * 1024 * 1024L
+            if (fileSize > maxSizeBytes) {
+                Toast.makeText(context, "File quá lớn!", Toast.LENGTH_LONG).show()
+            } else {
+                selectedFileName = fileName
+                selectedFileSize = fileSize
+                scope.launch {
+                    isUploading = true
+                    val result = FileUploader.uploadFile(context, it)
+                    isUploading = false
+                    result.onSuccess { url = it }
+                }
             }
         }
+    }
 
-        Spacer(modifier = Modifier.height(16.dp))
+    LaunchedEffect(firstName, phone, emailAddr, company, address) {
+        if (selectedType == QRSourceType.VCARD && firstName.isNotEmpty() && phone.isNotEmpty()) {
+            delay(1500)
+            val contactInfo = "Tên: $firstName\nSĐT: $phone\nEmail: $emailAddr\nCty: $company\nĐC: $address"
+            isUploading = true
+            val tempFile = java.io.File(context.cacheDir, "vcard.txt")
+            tempFile.writeText(contactInfo)
+            val result = FileUploader.uploadFile(context, Uri.fromFile(tempFile))
+            isUploading = false
+            result.onSuccess { url = it }
+        }
+    }
 
-        // Input Card
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn() + slideInVertically { 50 }
-        ) {
-            GlassCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+    LaunchedEffect(url, ssid, password, security, firstName, phone, emailAddr, company, address, emailSubject, emailBody, phoneNumber, latitude, longitude) {
+        val formattedContent = when (selectedType) {
+            QRSourceType.URL, QRSourceType.FACEBOOK, QRSourceType.INSTAGRAM, QRSourceType.MUSIC, QRSourceType.IMAGE -> {
+                if (url.isEmpty()) "" else if (!url.startsWith("http")) "https://$url" else url
+            }
+            QRSourceType.PDF -> if (url.isEmpty()) "" else "https://docs.google.com/viewer?url=${Uri.encode(url)}"
+            QRSourceType.WIFI -> if (ssid.isEmpty()) "" else "WIFI:T:$security;S:$ssid;P:$password;;"
+            QRSourceType.CONTACT -> if (firstName.isEmpty() || phone.isEmpty()) "" else "MECARD:N:$firstName;TEL:$phone;;"
+            QRSourceType.VCARD -> url
+            QRSourceType.EMAIL -> if (emailAddr.isEmpty()) "" else "mailto:$emailAddr?subject=${Uri.encode(emailSubject)}&body=${Uri.encode(emailBody)}"
+            QRSourceType.PHONE -> {
+                val clean = phoneNumber.replace(Regex("[^0-9+]"), "")
+                if (clean.isEmpty()) "" else "TEL:$clean"
+            }
+            QRSourceType.SMS -> {
+                val clean = phoneNumber.replace(Regex("[^0-9+]"), "")
+                if (clean.isEmpty()) "" else "sms:$clean?body=${Uri.encode(emailBody)}"
+            }
+            QRSourceType.LOCATION -> {
+                val cleanLat = latitude.replace(",", ".")
+                val cleanLng = longitude.replace(",", ".")
+                if (cleanLat.isNotEmpty() && cleanLng.isNotEmpty()) "https://www.google.com/maps/search/?api=1&query=$cleanLat,$cleanLng" else ""
+            }
+            else -> url
+        }
+        formattedContentState = formattedContent
+        onContentEntered(formattedContent)
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(QRAppColors.DarkBackground).statusBarsPadding()) {
+        StepProgressBar(currentStep = 2, modifier = Modifier.padding(horizontal = 16.dp))
+        val contentModifier = if (selectedType == QRSourceType.LOCATION) Modifier.weight(1f).padding(horizontal = 16.dp) else Modifier.weight(1f).verticalScroll(scrollState).padding(horizontal = 16.dp)
+        Column(modifier = contentModifier) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
+                Column {
+                    Text("Nhập nội dung", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(selectedType.displayName, style = MaterialTheme.typography.bodyMedium, color = QRAppColors.PrimaryStart)
+                }
+            }
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    // Type badge
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(QRAppColors.PrimaryStart.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = typeIcons[selectedType] ?: Icons.Outlined.QrCode,
-                                contentDescription = null,
-                                tint = QRAppColors.PrimaryStart,
-                                modifier = Modifier.size(22.dp)
-                            )
+                    CustomTextField(label = "Tên gợi nhớ", value = qrName, onValueChange = { qrName = it; onNameEntered(it) }, placeholder = "Ví dụ: Shop")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    when (selectedType) {
+                        QRSourceType.LOCATION -> {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Box(modifier = Modifier.weight(1f)) { CustomTextField(label = "Vĩ độ", value = latitude, onValueChange = { latitude = it }, placeholder = "21.0285", keyboardType = KeyboardType.Number) }
+                                Box(modifier = Modifier.weight(1f)) { CustomTextField(label = "Kinh độ", value = longitude, onValueChange = { longitude = it }, placeholder = "105.8542", keyboardType = KeyboardType.Number) }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Chạm bản đồ để chọn vị trí", style = MaterialTheme.typography.labelSmall, color = QRAppColors.TextSecondary)
+                            Box(modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))) {
+                                GoogleMap(modifier = Modifier.fillMaxSize(), cameraPositionState = cameraPositionState, onMapClick = { latLng ->
+                                    latitude = String.format(Locale.US, "%.6f", latLng.latitude)
+                                    longitude = String.format(Locale.US, "%.6f", latLng.longitude)
+                                    markerState.position = latLng
+                                }) { Marker(state = markerState, title = "Vị trí") }
+                            }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Nhập nội dung cho mã QR",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White
-                        )
-                    }
-
-                    Text(
-                        text = "Tên mã QR",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = QRAppColors.TextSecondary,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = qrName,
-                        onValueChange = {
-                            qrName = it
-                            onNameEntered(it)
-                        },
-                        placeholder = {
-                            Text(
-                                "Ví dụ: Mã QR của tôi",
-                                color = QRAppColors.TextTertiary
-                            )
-                        },
-                        trailingIcon = {
-                            if (qrName.isNotEmpty()) {
-                                IconButton(onClick = { 
-                                    qrName = ""
-                                    onNameEntered("")
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Close,
-                                        contentDescription = "Xóa",
-                                        tint = QRAppColors.TextTertiary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                        QRSourceType.IMAGE, QRSourceType.MUSIC, QRSourceType.PDF -> {
+                            val mime = when(selectedType) { QRSourceType.IMAGE -> "image/*"; QRSourceType.MUSIC -> "audio/*"; else -> "application/pdf" }
+                            Box(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)).border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).clickable { filePickerLauncher.launch(mime) }, contentAlignment = Alignment.Center) {
+                                if (isUploading) CircularProgressIndicator(color = QRAppColors.PrimaryStart)
+                                else if (selectedFileName.isEmpty()) Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = QRAppColors.PrimaryStart); Text("Tải lên", color = QRAppColors.TextTertiary, style = MaterialTheme.typography.bodySmall) }
+                                else Text(selectedFileName, color = Color.White)
                             }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = QRAppColors.PrimaryStart,
-                            unfocusedBorderColor = QRAppColors.DarkCardElevated,
-                            cursorColor = QRAppColors.PrimaryStart,
-                            focusedContainerColor = QRAppColors.DarkSurface.copy(alpha = 0.5f),
-                            unfocusedContainerColor = QRAppColors.DarkSurface.copy(alpha = 0.3f),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-
-                    Text(
-                        text = "Nội dung",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = QRAppColors.TextSecondary,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    // Text Field
-                    OutlinedTextField(
-                        value = content,
-                        onValueChange = {
-                            content = it
-                            onContentEntered(it)
-                        },
-                        placeholder = {
-                            Text(
-                                placeholders[selectedType] ?: "Nhập nội dung",
-                                color = QRAppColors.TextTertiary
-                            )
-                        },
-                        trailingIcon = {
-                            if (content.isNotEmpty()) {
-                                IconButton(onClick = { 
-                                    content = ""
-                                    onContentEntered("")
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Close,
-                                        contentDescription = "Xóa",
-                                        tint = QRAppColors.TextTertiary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = QRAppColors.PrimaryStart,
-                            unfocusedBorderColor = QRAppColors.DarkCardElevated,
-                            cursorColor = QRAppColors.PrimaryStart,
-                            focusedContainerColor = QRAppColors.DarkSurface.copy(alpha = 0.5f),
-                            unfocusedContainerColor = QRAppColors.DarkSurface.copy(alpha = 0.3f),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-
-                    // Character count
-                    if (content.isNotEmpty()) {
-                        Text(
-                            text = "${content.length} ký tự",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = QRAppColors.TextTertiary,
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(top = 6.dp)
-                        )
+                        }
+                        QRSourceType.WIFI -> {
+                            CustomTextField(label = "SSID", value = ssid, onValueChange = { ssid = it }, placeholder = "Tên Wifi")
+                            CustomTextField(label = "Mật khẩu", value = password, onValueChange = { password = it }, placeholder = "Mật khẩu", isPassword = true)
+                        }
+                        QRSourceType.CONTACT -> {
+                            CustomTextField(label = "Họ tên", value = firstName, onValueChange = { firstName = it }, placeholder = "Tên")
+                            CustomTextField(label = "SĐT", value = phone, onValueChange = { phone = it }, placeholder = "0123", keyboardType = KeyboardType.Phone)
+                        }
+                        QRSourceType.VCARD -> {
+                            CustomTextField(label = "Họ tên", value = firstName, onValueChange = { firstName = it }, placeholder = "Tên")
+                            CustomTextField(label = "SĐT", value = phone, onValueChange = { phone = it }, placeholder = "0123")
+                            CustomTextField(label = "Địa chỉ", value = address, onValueChange = { address = it }, placeholder = "Hà Nội")
+                        }
+                        QRSourceType.PHONE -> CustomTextField(label = "SĐT", value = phoneNumber, onValueChange = { phoneNumber = it }, placeholder = "0123")
+                        QRSourceType.SMS -> {
+                            CustomTextField(label = "SĐT", value = phoneNumber, onValueChange = { phoneNumber = it }, placeholder = "0123")
+                            CustomTextField(label = "Tin nhắn", value = emailBody, onValueChange = { emailBody = it }, placeholder = "Nội dung...", singleLine = false)
+                        }
+                        else -> CustomTextField(label = "URL", value = url, onValueChange = { url = it }, placeholder = "https://...")
                     }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Buttons
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onPrevious,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = QRAppColors.TextSecondary
-                ),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp, QRAppColors.DarkCardElevated
-                )
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Quay lại")
-            }
-
-            GradientButton(
-                text = "Tiếp theo",
-                onClick = { if (content.isNotEmpty()) onNext() },
-                enabled = content.isNotEmpty(),
-                icon = Icons.Filled.ArrowForward,
-                modifier = Modifier.weight(1f)
-            )
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = onPrevious, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) { Text("Quay lại", color = Color.White) }
+            GradientButton(text = "Tiếp theo", onClick = onNext, enabled = formattedContentState.isNotEmpty() && !isUploading, icon = Icons.Filled.ArrowForward, modifier = Modifier.weight(1f))
         }
+    }
+}
+
+@Composable
+fun CustomTextField(label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, keyboardType: KeyboardType = KeyboardType.Text, isPassword: Boolean = false, singleLine: Boolean = true) {
+    Column {
+        if (label.isNotEmpty()) Text(text = label, style = MaterialTheme.typography.labelMedium, color = QRAppColors.TextSecondary, modifier = Modifier.padding(bottom = 6.dp))
+        OutlinedTextField(value = value, onValueChange = onValueChange, placeholder = { Text(placeholder, color = QRAppColors.TextTertiary) }, modifier = Modifier.fillMaxWidth(), singleLine = singleLine, shape = RoundedCornerShape(12.dp), visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None, keyboardOptions = KeyboardOptions(keyboardType = keyboardType), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = QRAppColors.PrimaryStart, unfocusedBorderColor = Color.White.copy(alpha = 0.1f), focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedContainerColor = Color.White.copy(alpha = 0.05f), unfocusedContainerColor = Color.White.copy(alpha = 0.02f)))
     }
 }

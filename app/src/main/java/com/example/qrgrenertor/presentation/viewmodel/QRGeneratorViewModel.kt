@@ -13,8 +13,11 @@ import com.example.qrgrenertor.domain.repository.QRCodeRepository
 import com.example.qrgrenertor.presentation.ui.QRGeneratorEvent
 import com.example.qrgrenertor.presentation.ui.QRGeneratorUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,11 +32,15 @@ class QRGeneratorViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<QRGeneratorUiState>(QRGeneratorUiState.StepTypeSelection())
     val uiState: StateFlow<QRGeneratorUiState> = _uiState
 
+    private val _toastMessage = MutableSharedFlow<String>()
+    val toastMessage = _toastMessage.asSharedFlow()
+
     private var selectedType: QRSourceType? = null
     private var currentName: String = ""
     private var currentContent: String = ""
     private var currentDesign: QRDesign = QRDesign()
     private var currentQRCode: QRCode? = null
+    private var isCurrentSaved: Boolean = false
 
     fun onEvent(event: QRGeneratorEvent) {
         when (event) {
@@ -109,7 +116,6 @@ class QRGeneratorViewModel @Inject constructor(
                 }
             }
             is QRGeneratorUiState.StepDesignCustomization -> {
-                // Generate QR on next step
                 return
             }
             else -> return
@@ -147,6 +153,7 @@ class QRGeneratorViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = QRGeneratorUiState.Loading
+            isCurrentSaved = false
             val result = generateQRUseCase(currentName, currentContent, selectedType!!, currentDesign)
             when (result) {
                 is Result.Success -> {
@@ -163,11 +170,19 @@ class QRGeneratorViewModel @Inject constructor(
 
     private fun handleSaveQR() {
         val qrCode = currentQRCode ?: return
+        
         viewModelScope.launch {
+            if (isCurrentSaved) {
+                _toastMessage.emit("Bạn đã lưu vào trong lịch sử")
+                return@launch
+            }
+
             _uiState.value = QRGeneratorUiState.Loading
             val result = saveQRUseCase(qrCode)
             when (result) {
                 is Result.Success -> {
+                    isCurrentSaved = true
+                    _toastMessage.emit("Đã lưu vào lịch sử")
                     _uiState.value = QRGeneratorUiState.Success(qrCode)
                 }
                 is Result.Error -> {
@@ -218,7 +233,6 @@ class QRGeneratorViewModel @Inject constructor(
         viewModelScope.launch {
             val result = repository.deleteQR(id)
             if (result is Result.Success) {
-                // Reload history after delete
                 val historyResult = getQRHistoryUseCase()
                 if (historyResult is Result.Success) {
                     _uiState.value = QRGeneratorUiState.HistoryList(
@@ -236,6 +250,7 @@ class QRGeneratorViewModel @Inject constructor(
         currentContent = ""
         currentDesign = QRDesign()
         currentQRCode = null
+        isCurrentSaved = false
         _uiState.value = QRGeneratorUiState.StepTypeSelection()
     }
 }

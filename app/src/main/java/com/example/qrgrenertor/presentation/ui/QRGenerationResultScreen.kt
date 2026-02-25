@@ -1,11 +1,15 @@
 package com.example.qrgrenertor.presentation.ui
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,6 +25,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.qrgrenertor.domain.model.QRCode
@@ -29,7 +35,9 @@ import com.example.qrgrenertor.presentation.ui.components.GlassCard
 import com.example.qrgrenertor.presentation.ui.components.GradientButton
 import com.example.qrgrenertor.presentation.ui.components.StepProgressBar
 import com.example.qrgrenertor.presentation.ui.theme.QRAppColors
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QRGenerationResultScreen(
     qrCode: QRCode,
@@ -39,7 +47,11 @@ fun QRGenerationResultScreen(
     onBack: () -> Unit,
     onNewQR: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
 
     val qrBitmap = remember(qrCode.content, design) {
         QRGeneratorUtils.generateQRCode(qrCode.content, design)
@@ -57,17 +69,69 @@ fun QRGenerationResultScreen(
         )
     }
 
+    // Modal Bottom Sheet for Sharing
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            sheetState = sheetState,
+            containerColor = QRAppColors.DarkCard,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.2f)) },
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 40.dp, start = 24.dp, end = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Chia sẻ mã QR",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    ShareOptionItem(
+                        icon = Icons.Outlined.Share,
+                        label = "Gửi ảnh",
+                        color = Color(0xFF4285F4)
+                    ) {
+                        scope.launch {
+                            sheetState.hide()
+                            showSheet = false
+                            ShareUtils.shareQRCode(context, qrBitmap, qrCode.name)
+                        }
+                    }
+                    
+                    ShareOptionItem(
+                        icon = Icons.Outlined.ContentCopy,
+                        label = "Sao chép",
+                        color = Color(0xFF34A853)
+                    ) {
+                        scope.launch {
+                            sheetState.hide()
+                            showSheet = false
+                            ShareUtils.copyImageToClipboard(context, qrBitmap)
+                            Toast.makeText(context, "Đã sao chép ảnh mã QR", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(QRAppColors.DarkBackground)
             .statusBarsPadding()
     ) {
-        // Step Progress
-        StepProgressBar(
-            currentStep = 4,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+        StepProgressBar(currentStep = 4, modifier = Modifier.padding(horizontal = 16.dp))
 
         Column(
             modifier = Modifier
@@ -104,14 +168,13 @@ fun QRGenerationResultScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // QR Code Preview with glow
+            // QR Preview
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .scale(scaleAnim.value),
                 contentAlignment = Alignment.Center
             ) {
-                // Glow
                 Box(
                     modifier = Modifier
                         .size(280.dp)
@@ -123,9 +186,7 @@ fun QRGenerationResultScreen(
                         )
                 )
 
-                GlassCard(
-                    modifier = Modifier.wrapContentSize()
-                ) {
+                GlassCard(modifier = Modifier.wrapContentSize()) {
                     Box(
                         modifier = Modifier
                             .padding(20.dp)
@@ -145,52 +206,34 @@ fun QRGenerationResultScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // QR Code Info
-            GlassCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // Details Card
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
+                    InfoRow(icon = Icons.Outlined.Category, label = "Loại", value = qrCode.sourceType.displayName)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.05f))
+                    InfoRow(icon = Icons.Outlined.Title, label = "Tên", value = qrCode.name.ifEmpty { "Không có tên" })
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.05f))
                     InfoRow(
-                        icon = Icons.Outlined.Category,
-                        label = "Loại",
-                        value = qrCode.sourceType.displayName
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = QRAppColors.DarkCardElevated
-                    )
-                    InfoRow(
-                        icon = Icons.Outlined.Title,
-                        label = "Tên",
-                        value = qrCode.name
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = QRAppColors.DarkCardElevated
-                    )
-                    InfoRow(
-                        icon = Icons.Outlined.TextFields,
-                        label = "Nội dung",
-                        value = qrCode.content.take(40) + if (qrCode.content.length > 40) "..." else ""
+                        icon = Icons.Outlined.TextFields, 
+                        label = "Nội dung", 
+                        value = qrCode.content.take(100) + if (qrCode.content.length > 100) "..." else ""
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Action Buttons
+        // Action Buttons Row
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(QRAppColors.DarkBackground)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Save & Share row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 GradientButton(
                     text = "Lưu",
@@ -202,54 +245,37 @@ fun QRGenerationResultScreen(
 
                 GradientButton(
                     text = "Chia sẻ",
-                    onClick = onShare,
+                    onClick = { showSheet = true },
                     icon = Icons.Filled.Share,
                     gradient = QRAppColors.AccentGradient,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            // Back & New QR row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
                     onClick = onBack,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
+                    modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = QRAppColors.TextSecondary
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp, QRAppColors.DarkCardElevated
-                    )
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = QRAppColors.TextSecondary),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
                 ) {
-                    Text("Quay lại", style = MaterialTheme.typography.labelLarge)
+                    Text("Quay lại")
                 }
 
                 OutlinedButton(
                     onClick = onNewQR,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
+                    modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = QRAppColors.PrimaryStart
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp, QRAppColors.PrimaryStart.copy(alpha = 0.5f)
-                    )
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = QRAppColors.PrimaryStart),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, QRAppColors.PrimaryStart.copy(alpha = 0.3f))
                 ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Tạo mới", style = MaterialTheme.typography.labelLarge)
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Tạo mới")
                 }
             }
         }
@@ -257,35 +283,69 @@ fun QRGenerationResultScreen(
 }
 
 @Composable
-private fun InfoRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun ShareOptionItem(
+    icon: ImageVector,
     label: String,
-    value: String
+    color: Color,
+    onClick: () -> Unit
 ) {
-    Row(
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(color.copy(alpha = 0.12f), CircleShape)
+                .border(1.dp, color.copy(alpha = 0.2f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon, 
+                contentDescription = label, 
+                tint = color, 
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.labelMedium, 
+            color = Color.White.copy(alpha = 0.8f),
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(icon: ImageVector, label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(), 
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = QRAppColors.PrimaryStart,
-            modifier = Modifier.size(18.dp)
+            imageVector = icon, 
+            contentDescription = null, 
+            tint = QRAppColors.PrimaryStart, 
+            modifier = Modifier.size(20.dp)
         )
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = QRAppColors.TextTertiary,
+            text = label, 
+            style = MaterialTheme.typography.labelMedium, 
+            color = QRAppColors.TextTertiary, 
             modifier = Modifier.width(80.dp)
         )
         Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
-            modifier = Modifier.weight(1f)
+            text = value, 
+            style = MaterialTheme.typography.bodyMedium, 
+            color = Color.White, 
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
     }
 }

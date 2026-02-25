@@ -23,7 +23,8 @@ enum class QRSourceType(val displayName: String) {
     IMAGE("Image"),
     FACEBOOK("Facebook"),
     INSTAGRAM("Instagram"),
-    VCARD("vCard")
+    VCARD("vCard"),
+    LOCATION("Vị trí")
 }
 
 data class QRSource(

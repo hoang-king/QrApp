@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,7 +49,6 @@ fun QRHistoryScreen(
     onDismissDetail: () -> Unit,
     onBack: () -> Unit
 ) {
-    // Detail dialog
     if (selectedDetail != null) {
         QRDetailDialog(
             qrCode = selectedDetail,
@@ -62,7 +62,6 @@ fun QRHistoryScreen(
             .background(QRAppColors.DarkBackground)
             .statusBarsPadding()
     ) {
-        // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -97,51 +96,25 @@ fun QRHistoryScreen(
 
         when {
             isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = QRAppColors.PrimaryStart
-                    )
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = QRAppColors.PrimaryStart)
                 }
             }
             items.isEmpty() -> {
-                // Empty state
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
+                    modifier = Modifier.fillMaxSize().padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(QRAppColors.PrimaryStart.copy(alpha = 0.1f)),
+                        modifier = Modifier.size(80.dp).clip(RoundedCornerShape(20.dp)).background(QRAppColors.PrimaryStart.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.History,
-                            contentDescription = null,
-                            tint = QRAppColors.PrimaryStart.copy(alpha = 0.6f),
-                            modifier = Modifier.size(40.dp)
-                        )
+                        Icon(imageVector = Icons.Outlined.History, contentDescription = null, tint = QRAppColors.PrimaryStart.copy(alpha = 0.6f), modifier = Modifier.size(40.dp))
                     }
                     Spacer(modifier = Modifier.height(20.dp))
-                    Text(
-                        text = "Chưa có mã QR nào",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Tạo và lưu mã QR để xem ở đây",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = QRAppColors.TextSecondary
-                    )
+                    Text(text = "Chưa có mã QR nào", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(text = "Tạo và lưu mã QR để xem ở đây", style = MaterialTheme.typography.bodyMedium, color = QRAppColors.TextSecondary)
                 }
             }
             else -> {
@@ -157,10 +130,7 @@ fun QRHistoryScreen(
                             onDelete = { onDeleteItem(historyItem.id) }
                         )
                     }
-                    // Bottom spacer
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }
@@ -189,6 +159,7 @@ private fun HistoryCard(
         QRSourceType.FACEBOOK -> Icons.Outlined.Facebook
         QRSourceType.INSTAGRAM -> Icons.Outlined.CameraAlt
         QRSourceType.VCARD -> Icons.Outlined.ContactPage
+        QRSourceType.LOCATION -> Icons.Outlined.Place
     }
 
     val typeColor = when (qrCode.sourceType) {
@@ -204,90 +175,38 @@ private fun HistoryCard(
         QRSourceType.FACEBOOK -> Color(0xFF64B5F6)
         QRSourceType.INSTAGRAM -> Color(0xFFF06292)
         QRSourceType.VCARD -> Color(0xFF9575CD)
+        QRSourceType.LOCATION -> Color(0xFF3F51B5)
     }
 
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val dateString = remember(qrCode.createdAt) { dateFormat.format(Date(qrCode.createdAt)) }
 
     GlassCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = interactionSource,
-                indication = ripple(color = QRAppColors.PrimaryStart)
-            ) { onClick() }
+        modifier = Modifier.fillMaxWidth().clickable(interactionSource = interactionSource, indication = ripple(color = QRAppColors.PrimaryStart)) { onClick() }
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Type icon
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(typeColor.copy(alpha = 0.15f)),
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(typeColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = typeIcon,
-                    contentDescription = qrCode.sourceType.displayName,
-                    tint = typeColor,
-                    modifier = Modifier.size(24.dp)
-                )
+                Icon(imageVector = typeIcon, contentDescription = null, tint = typeColor, modifier = Modifier.size(24.dp))
             }
 
-            // Title & source type
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = qrCode.name.ifEmpty { "QR Code" },
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = qrCode.sourceType.displayName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = typeColor,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "·",
-                        color = QRAppColors.TextTertiary
-                    )
-                    Text(
-                        text = dateString,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = QRAppColors.TextTertiary
-                    )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = qrCode.name.ifEmpty { "QR Code" }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(text = qrCode.sourceType.displayName, style = MaterialTheme.typography.labelSmall, color = typeColor, fontWeight = FontWeight.Medium)
+                    Text(text = "·", color = QRAppColors.TextTertiary)
+                    Text(text = dateString, style = MaterialTheme.typography.labelSmall, color = QRAppColors.TextTertiary)
                 }
             }
 
-            // Delete button
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(36.dp),
-                colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = QRAppColors.TextTertiary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Xóa",
-                    modifier = Modifier.size(18.dp)
-                )
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp), colors = IconButtonDefaults.iconButtonColors(contentColor = QRAppColors.TextTertiary)) {
+                Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Xóa", modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -298,6 +217,7 @@ private fun QRDetailDialog(
     qrCode: QRCode,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val qrBitmap = remember(qrCode.content, qrCode.designSettings) {
         QRGeneratorUtils.generateQRCode(qrCode.content, qrCode.designSettings)
     }
@@ -310,124 +230,68 @@ private fun QRDetailDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(QRAppColors.DarkCard)
+            modifier = Modifier.fillMaxWidth(0.92f).clip(RoundedCornerShape(24.dp)).background(QRAppColors.DarkCard)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Close button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Chi tiết mã QR",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = "Đóng",
-                            tint = QRAppColors.TextSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Chi tiết mã QR", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Filled.Close, contentDescription = "Đóng", tint = QRAppColors.TextSecondary, modifier = Modifier.size(20.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // QR Code Image
                 Box(
-                    modifier = Modifier
-                        .size(200.dp)
-                        .shadow(
-                            elevation = 16.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            ambientColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f),
-                            spotColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f)
-                        )
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(qrCode.designSettings.backgroundColor)),
+                    modifier = Modifier.size(200.dp).shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp), ambientColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f), spotColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f)).clip(RoundedCornerShape(16.dp)).background(Color(qrCode.designSettings.backgroundColor)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        bitmap = qrBitmap.asImageBitmap(),
-                        contentDescription = "QR Code",
-                        modifier = Modifier.size(180.dp)
-                    )
+                    Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = "QR Code", modifier = Modifier.size(180.dp))
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Info rows
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(QRAppColors.DarkBackground.copy(alpha = 0.5f))
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(QRAppColors.DarkBackground.copy(alpha = 0.5f)).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     DetailRow(label = "Tên", value = qrCode.name.ifEmpty { "QR Code" })
                     HorizontalDivider(color = QRAppColors.DarkCardElevated)
                     DetailRow(label = "Loại", value = qrCode.sourceType.displayName)
                     HorizontalDivider(color = QRAppColors.DarkCardElevated)
-                    DetailRow(
-                        label = "Nội dung",
-                        value = qrCode.content
-                    )
-                    HorizontalDivider(color = QRAppColors.DarkCardElevated)
-                    DetailRow(label = "Kiểu mẫu", value = qrCode.designSettings.style.displayName)
+                    DetailRow(label = "Nội dung", value = qrCode.content)
                     HorizontalDivider(color = QRAppColors.DarkCardElevated)
                     DetailRow(label = "Ngày tạo", value = dateString)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Close button
-                GradientButton(
-                    text = "Đóng",
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = onDismiss, modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(12.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    ) { Text("Đóng") }
+
+                    GradientButton(
+                        text = "Chia sẻ",
+                        onClick = { ShareUtils.shareQRCode(context, qrBitmap, qrCode.name) },
+                        icon = Icons.Outlined.Share,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DetailRow(
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = QRAppColors.TextTertiary,
-            modifier = Modifier.width(80.dp),
-            fontWeight = FontWeight.Medium
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
-            modifier = Modifier.weight(1f)
-        )
+private fun DetailRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Text(text = label, style = MaterialTheme.typography.labelMedium, color = QRAppColors.TextTertiary, modifier = Modifier.width(80.dp), fontWeight = FontWeight.Medium)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
     }
 }
