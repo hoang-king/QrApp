@@ -2,7 +2,6 @@ package com.example.qrgrenertor.data.sync
 
 import com.example.qrgrenertor.data.local.QRCodeDao
 import com.example.qrgrenertor.data.remote.QRCodeApi
-import com.example.qrgrenertor.data.repository_impl.SyncManager
 import javax.inject.Inject
 
 class SyncManagerImpl @Inject constructor(

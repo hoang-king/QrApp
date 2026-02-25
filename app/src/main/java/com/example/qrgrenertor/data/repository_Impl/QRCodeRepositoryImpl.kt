@@ -1,11 +1,14 @@
-package com.example.qrgrenertor.data.repository_impl
+package com.example.qrgrenertor.data.repository_Impl
 
 import com.example.qrgrenertor.data.local.QRCodeDao
 import com.example.qrgrenertor.data.mapper.toDomain
 import com.example.qrgrenertor.data.mapper.toEntity
 import com.example.qrgrenertor.data.remote.QRCodeApi
+import com.example.qrgrenertor.data.sync.SyncManager
 import com.example.qrgrenertor.domain.model.QRCode
+import com.example.qrgrenertor.domain.model.QRDesign
 import com.example.qrgrenertor.domain.model.QRHistory
+import com.example.qrgrenertor.domain.model.QRSourceType
 import com.example.qrgrenertor.domain.model.Result
 import com.example.qrgrenertor.domain.repository.QRCodeRepository
 import kotlinx.coroutines.Dispatchers
@@ -19,13 +22,14 @@ class QRCodeRepositoryImpl @Inject constructor(
     private val syncManager: SyncManager
 ) : QRCodeRepository {
 
-    override suspend fun generateQR(content: String): Result<QRCode> = withContext(Dispatchers.IO) {
+    override suspend fun generateQR(name: String, content: String, type: QRSourceType, design: QRDesign): Result<QRCode> = withContext(Dispatchers.IO) {
         return@withContext try {
             val qrCode = QRCode(
                 id = UUID.randomUUID().toString(),
+                name = name,
                 content = content,
-                sourceType = com.example.qrgrenertor.domain.model.QRSourceType.URL,
-                designSettings = com.example.qrgrenertor.domain.model.QRDesign(),
+                sourceType = type,
+                designSettings = design,
                 imageUrl = null,
                 createdAt = System.currentTimeMillis()
             )
@@ -91,9 +95,4 @@ class QRCodeRepositoryImpl @Inject constructor(
             Result.Error(e)
         }
     }
-}
-
-interface SyncManager {
-    suspend fun markForSync(id: String)
-    suspend fun syncAll()
 }

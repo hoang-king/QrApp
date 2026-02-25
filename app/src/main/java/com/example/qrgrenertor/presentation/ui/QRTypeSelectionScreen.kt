@@ -36,7 +36,9 @@ import com.example.qrgrenertor.presentation.ui.theme.QRAppColors
 @Composable
 fun QRTypeSelectionScreen(
     onTypeSelected: (QRSourceType) -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onNavigateToHistory: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val qrTypes = listOf(
         QRSourceType.URL to Icons.Outlined.Link,
@@ -70,6 +72,7 @@ fun QRTypeSelectionScreen(
     )
 
     var selectedType: QRSourceType? by remember { mutableStateOf(null) }
+    var showMenu by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -82,13 +85,52 @@ fun QRTypeSelectionScreen(
         StepProgressBar(currentStep = 1)
 
         // Header
-        Text(
-            text = "Chọn loại QR Code",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Chọn loại QR Code",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Menu",
+                        tint = Color.White
+                    )
+                }
+                
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(QRAppColors.DarkCard)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Lịch sử", color = Color.White) },
+                        leadingIcon = { Icon(Icons.Default.History, contentDescription = null, tint = QRAppColors.PrimaryStart) },
+                        onClick = {
+                            showMenu = false
+                            onNavigateToHistory()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Cài đặt", color = Color.White) },
+                        leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = QRAppColors.PrimaryStart) },
+                        onClick = {
+                            showMenu = false
+                            onNavigateToSettings()
+                        }
+                    )
+                }
+            }
+        }
+        
         Text(
             text = "Chọn loại nội dung bạn muốn tạo mã QR",
             style = MaterialTheme.typography.bodyMedium,

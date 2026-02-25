@@ -28,11 +28,23 @@ import com.example.qrgrenertor.presentation.ui.theme.QRAppColors
 @Composable
 fun QRContentInputScreen(
     selectedType: QRSourceType,
+    name: String,
+    onNameEntered: (String) -> Unit,
     onContentEntered: (String) -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit
 ) {
     var content by remember { mutableStateOf("") }
+    
+    // Initial sync with ViewModel state if needed, but using the passed parameters is better
+    // For local state management within this composable:
+    var qrName by remember { mutableStateOf(name) }
+    var qrContent by remember { mutableStateOf("") }
+    
+    // Update local state when parent state changes
+    LaunchedEffect(name) {
+        qrName = name
+    }
 
     val placeholders = mapOf(
         QRSourceType.URL to "https://example.com",
@@ -148,6 +160,63 @@ fun QRContentInputScreen(
                         )
                     }
 
+                    Text(
+                        text = "Tên mã QR",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = QRAppColors.TextSecondary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = qrName,
+                        onValueChange = {
+                            qrName = it
+                            onNameEntered(it)
+                        },
+                        placeholder = {
+                            Text(
+                                "Ví dụ: Mã QR của tôi",
+                                color = QRAppColors.TextTertiary
+                            )
+                        },
+                        trailingIcon = {
+                            if (qrName.isNotEmpty()) {
+                                IconButton(onClick = { 
+                                    qrName = ""
+                                    onNameEntered("")
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "Xóa",
+                                        tint = QRAppColors.TextTertiary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = QRAppColors.PrimaryStart,
+                            unfocusedBorderColor = QRAppColors.DarkCardElevated,
+                            cursorColor = QRAppColors.PrimaryStart,
+                            focusedContainerColor = QRAppColors.DarkSurface.copy(alpha = 0.5f),
+                            unfocusedContainerColor = QRAppColors.DarkSurface.copy(alpha = 0.3f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+
+                    Text(
+                        text = "Nội dung",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = QRAppColors.TextSecondary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
                     // Text Field
                     OutlinedTextField(
                         value = content,
@@ -161,11 +230,25 @@ fun QRContentInputScreen(
                                 color = QRAppColors.TextTertiary
                             )
                         },
+                        trailingIcon = {
+                            if (content.isNotEmpty()) {
+                                IconButton(onClick = { 
+                                    content = ""
+                                    onContentEntered("")
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "Xóa",
+                                        tint = QRAppColors.TextTertiary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 140.dp),
-                        maxLines = 8,
-                        shape = RoundedCornerShape(14.dp),
+                            .fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = QRAppColors.PrimaryStart,
                             unfocusedBorderColor = QRAppColors.DarkCardElevated,

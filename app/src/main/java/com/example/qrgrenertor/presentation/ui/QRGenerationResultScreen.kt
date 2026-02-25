@@ -160,27 +160,18 @@ fun QRGenerationResultScreen(
                         color = QRAppColors.DarkCardElevated
                     )
                     InfoRow(
+                        icon = Icons.Outlined.Title,
+                        label = "Tên",
+                        value = qrCode.name
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        color = QRAppColors.DarkCardElevated
+                    )
+                    InfoRow(
                         icon = Icons.Outlined.TextFields,
                         label = "Nội dung",
                         value = qrCode.content.take(40) + if (qrCode.content.length > 40) "..." else ""
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = QRAppColors.DarkCardElevated
-                    )
-                    InfoRow(
-                        icon = Icons.Outlined.AspectRatio,
-                        label = "Kích thước",
-                        value = "${design.size}px"
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = QRAppColors.DarkCardElevated
-                    )
-                    InfoRow(
-                        icon = Icons.Outlined.Shield,
-                        label = "Sửa lỗi",
-                        value = design.errorCorrectionLevel.displayName
                     )
                 }
             }

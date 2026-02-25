@@ -4,8 +4,8 @@ import android.content.Context
 import com.example.qrgrenertor.data.local.AppDatabase
 import com.example.qrgrenertor.data.local.QRCodeDao
 import com.example.qrgrenertor.data.remote.QRCodeApi
-import com.example.qrgrenertor.data.repository_impl.QRCodeRepositoryImpl
-import com.example.qrgrenertor.data.repository_impl.SyncManager
+import com.example.qrgrenertor.data.repository_Impl.QRCodeRepositoryImpl
+import com.example.qrgrenertor.data.sync.SyncManager
 import com.example.qrgrenertor.data.sync.SyncManagerImpl
 import com.example.qrgrenertor.domain.repository.QRCodeRepository
 import dagger.Module

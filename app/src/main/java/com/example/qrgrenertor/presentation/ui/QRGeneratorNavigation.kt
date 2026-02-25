@@ -34,12 +34,30 @@ fun QRGeneratorNavigation(
             is QRGeneratorUiState.StepTypeSelection -> {
                 QRTypeSelectionScreen(
                     onTypeSelected = { type -> onEvent(QRGeneratorEvent.SelectQRType(type)) },
-                    onNext = { onEvent(QRGeneratorEvent.GoToNextStep) }
+                    onNext = { onEvent(QRGeneratorEvent.GoToNextStep) },
+                    onNavigateToHistory = { onEvent(QRGeneratorEvent.NavigateToHistory) },
+                    onNavigateToSettings = { onEvent(QRGeneratorEvent.NavigateToSettings) }
                 )
+            }
+            is QRGeneratorUiState.HistoryList -> {
+                QRHistoryScreen(
+                    items = uiState.items,
+                    isLoading = uiState.isLoading,
+                    selectedDetail = uiState.selectedDetail,
+                    onItemClick = { qrCode -> onEvent(QRGeneratorEvent.ViewHistoryDetail(qrCode)) },
+                    onDeleteItem = { id -> onEvent(QRGeneratorEvent.DeleteHistoryItem(id)) },
+                    onDismissDetail = { onEvent(QRGeneratorEvent.DismissHistoryDetail) },
+                    onBack = { onEvent(QRGeneratorEvent.Reset) }
+                )
+            }
+            is QRGeneratorUiState.Settings -> {
+                SettingsScreen(onBack = { onEvent(QRGeneratorEvent.Reset) })
             }
             is QRGeneratorUiState.StepContentInput -> {
                 QRContentInputScreen(
                     selectedType = uiState.selectedType,
+                    name = uiState.name,
+                    onNameEntered = { name -> onEvent(QRGeneratorEvent.EnterName(name)) },
                     onContentEntered = { content -> onEvent(QRGeneratorEvent.EnterContent(content)) },
                     onNext = { onEvent(QRGeneratorEvent.GoToNextStep) },
                     onPrevious = { onEvent(QRGeneratorEvent.GoToPreviousStep) }
@@ -48,6 +66,7 @@ fun QRGeneratorNavigation(
             is QRGeneratorUiState.StepDesignCustomization -> {
                 QRDesignCustomizationScreen(
                     content = uiState.content,
+                    name = uiState.name,
                     currentDesign = uiState.design,
                     onDesignUpdated = { design -> onEvent(QRGeneratorEvent.UpdateDesign(design)) },
                     onGenerateQR = { onEvent(QRGeneratorEvent.GenerateQR) },
@@ -221,5 +240,39 @@ private fun IdleScreen() {
             style = MaterialTheme.typography.titleMedium,
             color = QRAppColors.TextSecondary
         )
+    }
+}
+
+
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsScreen(onBack: () -> Unit) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Cài đặt", color = Color.White) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = QRAppColors.DarkBackground)
+            )
+        },
+        containerColor = QRAppColors.DarkBackground
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(64.dp), tint = QRAppColors.TextSecondary)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Tính năng cài đặt đang phát triển", color = QRAppColors.TextSecondary)
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.example.qrgrenertor.domain.model
 
 data class QRCode(
     val id: String,
+    val name: String,
     val content: String,
     val sourceType: QRSourceType,
     val designSettings: QRDesign,
@@ -35,8 +36,18 @@ data class QRDesign(
     val backgroundColor: Long = 0xFFFFFFFF,
     val codeColor: Long = 0xFF000000,
     val size: Int = 512,
+    val style: QRStyle = QRStyle.SQUARE,
     val errorCorrectionLevel: ErrorCorrectionLevel = ErrorCorrectionLevel.MEDIUM
 )
+
+enum class QRStyle(val displayName: String) {
+    SQUARE("Vuông"),
+    ROUNDED("Bo góc"),
+    DOT("Chấm tròn"),
+    DIAMOND("Kim cương"),
+    HEART("Trái tim"),
+    CLASSY("Cổ điển")
+}
 
 enum class ErrorCorrectionLevel(val displayName: String, val value: String) {
     LOW("Low (7%)", "L"),

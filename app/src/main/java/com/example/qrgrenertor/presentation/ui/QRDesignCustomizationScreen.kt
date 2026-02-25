@@ -1,5 +1,6 @@
 package com.example.qrgrenertor.presentation.ui
 
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.qrgrenertor.domain.model.ErrorCorrectionLevel
 import com.example.qrgrenertor.domain.model.QRDesign
+import com.example.qrgrenertor.domain.model.QRStyle
 import com.example.qrgrenertor.presentation.ui.components.GlassCard
 import com.example.qrgrenertor.presentation.ui.components.GradientButton
 import com.example.qrgrenertor.presentation.ui.components.StepProgressBar
@@ -38,6 +41,7 @@ import com.example.qrgrenertor.presentation.ui.theme.QRAppColors
 @Composable
 fun QRDesignCustomizationScreen(
     content: String,
+    name: String,
     currentDesign: QRDesign,
     onDesignUpdated: (QRDesign) -> Unit,
     onGenerateQR: () -> Unit,
@@ -45,13 +49,12 @@ fun QRDesignCustomizationScreen(
 ) {
     var backgroundColor by remember { mutableStateOf(currentDesign.backgroundColor) }
     var codeColor by remember { mutableStateOf(currentDesign.codeColor) }
-    var size by remember { mutableStateOf(currentDesign.size.toFloat()) }
-    var errorLevel by remember { mutableStateOf(currentDesign.errorCorrectionLevel) }
+    var qrStyle by remember { mutableStateOf(currentDesign.style) }
 
-    val qrBitmap = remember(backgroundColor, codeColor, errorLevel) {
+    val qrBitmap = remember(backgroundColor, codeColor, qrStyle) {
         QRGeneratorUtils.generateQRCode(
             "PREVIEW_ONLY",
-            QRDesign(backgroundColor, codeColor, 512, errorLevel)
+            QRDesign(backgroundColor, codeColor, 512, qrStyle)
         )
     }
 
@@ -129,30 +132,47 @@ fun QRDesignCustomizationScreen(
             }
 
             // QR Preview
-            GlassCard(
+            Box(
                 modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 8.dp)
+                    .fillMaxWidth()
+                    .height(280.dp),
+                contentAlignment = Alignment.Center
             ) {
+                // Khung viền cố định bên ngoài (Khung giữ nguyên)
                 Box(
                     modifier = Modifier
-                        .padding(20.dp)
-                        .size(200.dp)
-                        .shadow(
-                            elevation = 16.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            ambientColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f),
-                            spotColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f)
+                        .size(240.dp)
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(24.dp)
                         )
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(backgroundColor)),
+                        .background(
+                            color = Color.White.copy(alpha = 0.03f),
+                            shape = RoundedCornerShape(24.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        bitmap = qrBitmap.asImageBitmap(),
-                        contentDescription = "Bản xem trước QR",
-                        modifier = Modifier.size(170.dp)
-                    )
+                    // QR preview at fixed size
+                    Box(
+                        modifier = Modifier
+                            .size(160.dp)
+                            .shadow(
+                                elevation = 12.dp,
+                                shape = RoundedCornerShape(12.dp),
+                                ambientColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f),
+                                spotColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f)
+                            )
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(backgroundColor)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            bitmap = qrBitmap.asImageBitmap(),
+                            contentDescription = "Bản xem trước QR",
+                            modifier = Modifier.size(140.dp)
+                        )
+                    }
                 }
             }
 
@@ -172,7 +192,7 @@ fun QRDesignCustomizationScreen(
                         isSelected = backgroundColor == color,
                         onClick = {
                             backgroundColor = color
-                            onDesignUpdated(QRDesign(color, codeColor, size.toInt(), errorLevel))
+                            onDesignUpdated(QRDesign(color, codeColor, 512, qrStyle))
                         }
                     )
                 }
@@ -194,7 +214,7 @@ fun QRDesignCustomizationScreen(
                         isSelected = codeColor == color,
                         onClick = {
                             codeColor = color
-                            onDesignUpdated(QRDesign(backgroundColor, color, size.toInt(), errorLevel))
+                            onDesignUpdated(QRDesign(backgroundColor, color, 512, qrStyle))
                         }
                     )
                 }
@@ -202,62 +222,24 @@ fun QRDesignCustomizationScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // QR Size Section
-            SectionHeader(title = "Kích thước: ${size.toInt()}px")
-            Spacer(modifier = Modifier.height(4.dp))
-            Slider(
-                value = size,
-                onValueChange = {
-                    size = it
-                    onDesignUpdated(QRDesign(backgroundColor, codeColor, it.toInt(), errorLevel))
-                },
-                valueRange = 256f..1024f,
-                colors = SliderDefaults.colors(
-                    thumbColor = QRAppColors.PrimaryStart,
-                    activeTrackColor = QRAppColors.PrimaryStart,
-                    inactiveTrackColor = QRAppColors.DarkCardElevated
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Error Correction Level
-            SectionHeader(title = "Mức độ sửa lỗi")
+            // QR Style Section
+            SectionHeader(title = "Kiểu mẫu")
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
+            LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
-                ErrorCorrectionLevel.entries.forEach { level ->
-                    FilterChip(
-                        selected = errorLevel == level,
+                items(QRStyle.entries.size) { index ->
+                    val style = QRStyle.entries[index]
+                    QRStyleCard(
+                        style = style,
+                        isSelected = qrStyle == style,
+                        codeColor = codeColor,
                         onClick = {
-                            errorLevel = level
-                            onDesignUpdated(QRDesign(backgroundColor, codeColor, size.toInt(), level))
-                        },
-                        label = {
-                            Text(
-                                level.displayName,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = QRAppColors.PrimaryStart.copy(alpha = 0.2f),
-                            selectedLabelColor = QRAppColors.PrimaryStart,
-                            containerColor = QRAppColors.DarkCard,
-                            labelColor = QRAppColors.TextSecondary
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            borderColor = Color.Transparent,
-                            selectedBorderColor = QRAppColors.PrimaryStart.copy(alpha = 0.5f),
-                            enabled = true,
-                            selected = errorLevel == level
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
+                            qrStyle = style
+                            onDesignUpdated(QRDesign(backgroundColor, codeColor, 512, style))
+                        }
                     )
                 }
             }
@@ -367,5 +349,107 @@ private fun ColorCircle(
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun QRStyleCard(
+    style: QRStyle,
+    isSelected: Boolean,
+    codeColor: Long,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    // Generate mini QR thumbnail for this style
+    val thumbnailBitmap = remember(style, codeColor) {
+        QRGeneratorUtils.generateQRCode(
+            "STYLE",
+            QRDesign(
+                backgroundColor = 0xFFFFFFFF,
+                codeColor = codeColor,
+                size = 128,
+                style = style
+            )
+        )
+    }
+
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "styleCardScale"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .scale(animatedScale)
+            .width(80.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(bounded = true, color = QRAppColors.PrimaryStart)
+            ) { onClick() }
+    ) {
+        // Thumbnail container
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .then(
+                    if (isSelected) {
+                        Modifier.shadow(
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = QRAppColors.PrimaryStart.copy(alpha = 0.4f),
+                            spotColor = QRAppColors.PrimaryStart.copy(alpha = 0.4f)
+                        )
+                    } else Modifier
+                )
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    if (isSelected) QRAppColors.DarkCardElevated
+                    else QRAppColors.DarkCard
+                )
+                .then(
+                    if (isSelected) {
+                        Modifier.border(
+                            width = 2.dp,
+                            brush = Brush.linearGradient(
+                                colors = listOf(QRAppColors.PrimaryStart, QRAppColors.AccentStart)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    } else {
+                        Modifier.border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Mini QR preview
+            Image(
+                bitmap = thumbnailBitmap.asImageBitmap(),
+                contentDescription = style.displayName,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(6.dp))
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Style name
+        Text(
+            text = style.displayName,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) QRAppColors.PrimaryStart else QRAppColors.TextSecondary,
+            maxLines = 1
+        )
     }
 }
