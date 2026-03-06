@@ -53,7 +53,8 @@ fun QRTypeSelectionScreen(
         QRSourceType.FACEBOOK to Icons.Outlined.Facebook,
         QRSourceType.INSTAGRAM to Icons.Outlined.CameraAlt,
         QRSourceType.VCARD to Icons.Outlined.Person,
-        QRSourceType.LOCATION to Icons.Outlined.Map
+        QRSourceType.LOCATION to Icons.Outlined.Map,
+        QRSourceType.VIDEO to Icons.Outlined.VideoLibrary
     )
 
     val typeColors = mapOf(
@@ -69,7 +70,8 @@ fun QRTypeSelectionScreen(
         QRSourceType.FACEBOOK to Color(0xFF1E88E5),
         QRSourceType.INSTAGRAM to Color(0xFFE040FB),
         QRSourceType.VCARD to Color(0xFF66BB6A),
-        QRSourceType.LOCATION to Color(0xFF3F51B5)
+        QRSourceType.LOCATION to Color(0xFF3F51B5),
+        QRSourceType.VIDEO to Color(0xFFD32F2F)
     )
 
     var selectedType: QRSourceType? by remember { mutableStateOf(null) }

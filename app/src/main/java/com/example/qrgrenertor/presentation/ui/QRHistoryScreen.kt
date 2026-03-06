@@ -160,6 +160,7 @@ private fun HistoryCard(
         QRSourceType.INSTAGRAM -> Icons.Outlined.CameraAlt
         QRSourceType.VCARD -> Icons.Outlined.ContactPage
         QRSourceType.LOCATION -> Icons.Outlined.Place
+        QRSourceType.VIDEO -> Icons.Outlined.VideoLibrary
     }
 
     val typeColor = when (qrCode.sourceType) {
@@ -176,6 +177,7 @@ private fun HistoryCard(
         QRSourceType.INSTAGRAM -> Color(0xFFF06292)
         QRSourceType.VCARD -> Color(0xFF9575CD)
         QRSourceType.LOCATION -> Color(0xFF3F51B5)
+        QRSourceType.VIDEO -> Color(0xFFEF5350)
     }
 
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }

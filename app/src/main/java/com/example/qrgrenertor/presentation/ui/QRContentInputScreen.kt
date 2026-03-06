@@ -88,7 +88,11 @@ fun QRContentInputScreen(
         uri?.let {
             val fileName = FileUtils.getFileName(context, it) ?: "Unknown"
             val fileSize = FileUtils.getFileSize(context, it)
-            val maxSizeBytes = if (selectedType == QRSourceType.PDF) 100 * 1024 * 1024L else 10 * 1024 * 1024L
+            val maxSizeBytes = when(selectedType) {
+                QRSourceType.PDF -> 100 * 1024 * 1024L
+                QRSourceType.VIDEO -> 600 * 1024 * 1024L // 600MB for video
+                else -> 10 * 1024 * 1024L
+            }
             if (fileSize > maxSizeBytes) {
                 Toast.makeText(context, "File quá lớn!", Toast.LENGTH_LONG).show()
             } else {
@@ -98,7 +102,13 @@ fun QRContentInputScreen(
                     isUploading = true
                     val result = FileUploader.uploadFile(context, it)
                     isUploading = false
-                    result.onSuccess { url = it }
+                    result.onSuccess { 
+                        url = it
+                        Toast.makeText(context, "Tải lên thành công!", Toast.LENGTH_SHORT).show()
+                    }
+                    result.onFailure { error ->
+                        Toast.makeText(context, "Lỗi tải lên: ${error.message}", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
@@ -119,7 +129,7 @@ fun QRContentInputScreen(
 
     LaunchedEffect(url, ssid, password, security, firstName, phone, emailAddr, company, address, emailSubject, emailBody, phoneNumber, latitude, longitude) {
         val formattedContent = when (selectedType) {
-            QRSourceType.URL, QRSourceType.FACEBOOK, QRSourceType.INSTAGRAM, QRSourceType.MUSIC, QRSourceType.IMAGE -> {
+            QRSourceType.URL, QRSourceType.FACEBOOK, QRSourceType.INSTAGRAM, QRSourceType.MUSIC, QRSourceType.IMAGE, QRSourceType.VIDEO -> {
                 if (url.isEmpty()) "" else if (!url.startsWith("http")) "https://$url" else url
             }
             QRSourceType.PDF -> if (url.isEmpty()) "" else "https://docs.google.com/viewer?url=${Uri.encode(url)}"
@@ -178,8 +188,13 @@ fun QRContentInputScreen(
                                 }) { Marker(state = markerState, title = "Vị trí") }
                             }
                         }
-                        QRSourceType.IMAGE, QRSourceType.MUSIC, QRSourceType.PDF -> {
-                            val mime = when(selectedType) { QRSourceType.IMAGE -> "image/*"; QRSourceType.MUSIC -> "audio/*"; else -> "application/pdf" }
+                        QRSourceType.IMAGE, QRSourceType.MUSIC, QRSourceType.PDF, QRSourceType.VIDEO -> {
+                            val mime = when(selectedType) {
+                                QRSourceType.IMAGE -> "image/*"
+                                QRSourceType.MUSIC -> "audio/*"
+                                QRSourceType.VIDEO -> "video/*"
+                                else -> "application/pdf"
+                            }
                             Box(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)).border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).clickable { filePickerLauncher.launch(mime) }, contentAlignment = Alignment.Center) {
                                 if (isUploading) CircularProgressIndicator(color = QRAppColors.PrimaryStart)
                                 else if (selectedFileName.isEmpty()) Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = QRAppColors.PrimaryStart); Text("Tải lên", color = QRAppColors.TextTertiary, style = MaterialTheme.typography.bodySmall) }

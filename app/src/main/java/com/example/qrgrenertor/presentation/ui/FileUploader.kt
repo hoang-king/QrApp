@@ -4,68 +4,92 @@ import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody
+import okio.BufferedSink
+import okio.source
 import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 object FileUploader {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.MINUTES)
+        .writeTimeout(15, TimeUnit.MINUTES)
+        .readTimeout(15, TimeUnit.MINUTES)
         .build()
 
     /**
-     * Tải file lên Catbox.moe và trả về link thật.
-     * Đây là dịch vụ miễn phí, không cần API key.
+     * Tải file lên Catbox.moe hoặc Litterbox tùy kích thước.
+     * - Dưới 200MB: Dùng Catbox (Lưu trữ vĩnh viễn)
+     * - Trên 200MB (đến 1GB): Dùng Litterbox (Lưu trữ trong 72 giờ)
      */
     suspend fun uploadFile(context: Context, uri: Uri): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val file = uriToFile(context, uri) ?: return@withContext Result.failure(Exception("Không thể mở file"))
+            val fileName = FileUtils.getFileName(context, uri) ?: "file_${System.currentTimeMillis()}"
+            val fileSize = FileUtils.getFileSize(context, uri)
+            val mediaType = "application/octet-stream".toMediaTypeOrNull()
             
-            val requestBody = MultipartBody.Builder()
+            // Nếu file > 200MB, sử dụng Litterbox (hỗ trợ đến 1GB)
+            val isLargeFile = fileSize > 200 * 1024 * 1024L
+            val apiUrl = if (isLargeFile) "https://litterbox.catbox.moe/resources/internals/api.php" 
+                         else "https://catbox.moe/user/api.php"
+            
+            val requestBodyBuilder = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("reqtype", "fileupload")
-                .addFormDataPart(
-                    "fileToUpload",
-                    file.name,
-                    file.asRequestBody("application/octet-stream".toMediaTypeOrNull())
-                )
-                .build()
+                
+            // Litterbox yêu cầu tham số 'time' (1h, 12h, 24h, 72h)
+            if (isLargeFile) {
+                requestBodyBuilder.addFormDataPart("time", "72h")
+            }
+                
+            requestBodyBuilder.addFormDataPart(
+                "fileToUpload",
+                fileName,
+                createRequestBodyFromUri(context, uri, mediaType)
+            )
 
             val request = Request.Builder()
-                .url("https://catbox.moe/user/api.php")
-                .post(requestBody)
+                .url(apiUrl)
+                .post(requestBodyBuilder.build())
                 .build()
 
             val response = client.newCall(request).execute()
             val body = response.body?.string()
 
             if (response.isSuccessful && body != null) {
-                // Catbox trả về trực tiếp URL dạng: https://files.catbox.moe/abcxyz.ext
-                Result.success(body.trim())
+                val responseText = body.trim()
+                if (responseText.startsWith("https://")) {
+                    val finalUrl = if (isLargeFile) "$responseText?expires=72h" else responseText
+                    Result.success(finalUrl)
+                } else {
+                    Result.failure(Exception("Server trả về lỗi: $responseText"))
+                }
             } else {
-                Result.failure(Exception("Upload thất bại: ${response.message}"))
+                Result.failure(Exception("Upload thất bại: ${response.code} ${response.message}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun uriToFile(context: Context, uri: Uri): File? {
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-        val tempFile = File.createTempFile("upload_", "_${FileUtils.getFileName(context, uri)}", context.cacheDir)
-        val outputStream = FileOutputStream(tempFile)
-        inputStream.use { input ->
-            outputStream.use { output ->
-                input.copyTo(output)
+    private fun createRequestBodyFromUri(context: Context, uri: Uri, contentType: MediaType?): RequestBody {
+        return object : RequestBody() {
+            override fun contentType(): MediaType? = contentType
+
+            override fun contentLength(): Long {
+                return FileUtils.getFileSize(context, uri)
+            }
+
+            override fun writeTo(sink: BufferedSink) {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    sink.writeAll(inputStream.source())
+                } ?: throw Exception("Không thể mở InputStream từ Uri")
             }
         }
-        return tempFile
     }
 }
