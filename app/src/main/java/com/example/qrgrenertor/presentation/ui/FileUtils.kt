@@ -3,6 +3,7 @@ package com.example.qrgrenertor.presentation.ui
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import java.io.File
 
 object FileUtils {
     fun getFileName(context: Context, uri: Uri): String? {
@@ -19,7 +20,10 @@ object FileUtils {
             } finally {
                 cursor?.close()
             }
+        } else if (uri.scheme == "file") {
+            result = uri.lastPathSegment
         }
+        
         if (result == null) {
             result = uri.path
             val cut = result?.lastIndexOf('/')
@@ -31,20 +35,24 @@ object FileUtils {
     }
 
     fun getFileSize(context: Context, uri: Uri): Long {
-        var size: Long = 0
         if (uri.scheme == "content") {
             val cursor = context.contentResolver.query(uri, null, null, null, null)
             try {
                 if (cursor != null && cursor.moveToFirst()) {
                     val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                     if (sizeIndex >= 0) {
-                        size = cursor.getLong(sizeIndex)
+                        return cursor.getLong(sizeIndex)
                     }
                 }
             } finally {
                 cursor?.close()
             }
+        } else if (uri.scheme == "file") {
+            val path = uri.path
+            if (path != null) {
+                return File(path).length()
+            }
         }
-        return size
+        return 0
     }
 }

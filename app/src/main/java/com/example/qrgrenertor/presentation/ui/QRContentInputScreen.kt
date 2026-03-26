@@ -15,7 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -84,13 +84,15 @@ fun QRContentInputScreen(
     var selectedFileName by remember { mutableStateOf("") }
     var selectedFileSize by remember { mutableStateOf(0L) }
 
+    var isCompressing by remember { mutableStateOf(false) }
+
     val filePickerLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             val fileName = FileUtils.getFileName(context, it) ?: "Unknown"
             val fileSize = FileUtils.getFileSize(context, it)
             val maxSizeBytes = when(selectedType) {
                 QRSourceType.PDF -> 100 * 1024 * 1024L
-                QRSourceType.VIDEO -> 600 * 1024 * 1024L // 600MB for video
+                QRSourceType.VIDEO -> 1024 * 1024 * 1024L // Allow up to 1GB now with compression
                 else -> 10 * 1024 * 1024L
             }
             if (fileSize > maxSizeBytes) {
@@ -99,8 +101,26 @@ fun QRContentInputScreen(
                 selectedFileName = fileName
                 selectedFileSize = fileSize
                 scope.launch {
+                    var uploadUri = it
+                    
+                    // Nén nếu là Video
+                    if (selectedType == QRSourceType.VIDEO) {
+                        isCompressing = true
+                        Toast.makeText(context, "Đang tối ưu dung lượng video...", Toast.LENGTH_SHORT).show()
+                        val compressionResult = VideoCompressor.compressVideo(context, it)
+                        isCompressing = false
+                        
+                        compressionResult.onSuccess { compressedFile ->
+                            uploadUri = Uri.fromFile(compressedFile)
+                            val newSize = compressedFile.length() / (1024 * 1024)
+                            Toast.makeText(context, "Đã nén xuống còn ${newSize}MB", Toast.LENGTH_SHORT).show()
+                        }.onFailure { e ->
+                            Toast.makeText(context, "Không thể nén video, sẽ tải bản gốc: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
                     isUploading = true
-                    val result = FileUploader.uploadFile(context, it)
+                    val result = FileUploader.uploadFile(context, uploadUri)
                     isUploading = false
                     result.onSuccess { 
                         url = it
@@ -195,10 +215,29 @@ fun QRContentInputScreen(
                                 QRSourceType.VIDEO -> "video/*"
                                 else -> "application/pdf"
                             }
-                            Box(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)).border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).clickable { filePickerLauncher.launch(mime) }, contentAlignment = Alignment.Center) {
-                                if (isUploading) CircularProgressIndicator(color = QRAppColors.PrimaryStart)
-                                else if (selectedFileName.isEmpty()) Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = QRAppColors.PrimaryStart); Text("Tải lên", color = QRAppColors.TextTertiary, style = MaterialTheme.typography.bodySmall) }
-                                else Text(selectedFileName, color = Color.White)
+                            Box(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)).border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).clickable { 
+                                if (!isUploading && !isCompressing) filePickerLauncher.launch(mime) 
+                            }, contentAlignment = Alignment.Center) {
+                                if (isCompressing) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(color = QRAppColors.PrimaryStart, modifier = Modifier.size(32.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Đang tối ưu video...", color = QRAppColors.PrimaryStart, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                } else if (isUploading) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(color = QRAppColors.PrimaryStart, modifier = Modifier.size(32.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Đang tải lên...", color = QRAppColors.PrimaryStart, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                } else if (selectedFileName.isEmpty()) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) { 
+                                        Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = QRAppColors.PrimaryStart)
+                                        Text("Tải lên", color = QRAppColors.TextTertiary, style = MaterialTheme.typography.bodySmall) 
+                                    }
+                                } else {
+                                    Text(selectedFileName, color = Color.White)
+                                }
                             }
                         }
                         QRSourceType.WIFI -> {
@@ -226,7 +265,7 @@ fun QRContentInputScreen(
         }
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onPrevious, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) { Text("Quay lại", color = Color.White) }
-            GradientButton(text = "Tiếp theo", onClick = onNext, enabled = formattedContentState.isNotEmpty() && !isUploading, icon = Icons.Filled.ArrowForward, modifier = Modifier.weight(1f))
+            GradientButton(text = "Tiếp theo", onClick = onNext, enabled = formattedContentState.isNotEmpty() && !isUploading, icon = Icons.AutoMirrored.Filled.ArrowForward, modifier = Modifier.weight(1f))
         }
     }
 }

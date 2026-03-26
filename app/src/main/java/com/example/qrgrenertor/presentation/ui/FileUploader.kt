@@ -59,10 +59,10 @@ object FileUploader {
                 .build()
 
             val response = client.newCall(request).execute()
-            val body = response.body?.string()
+            val responseBody = response.body?.string()
 
-            if (response.isSuccessful && body != null) {
-                val responseText = body.trim()
+            if (response.isSuccessful && responseBody != null) {
+                val responseText = responseBody.trim()
                 if (responseText.startsWith("https://")) {
                     val finalUrl = if (isLargeFile) "$responseText?expires=72h" else responseText
                     Result.success(finalUrl)

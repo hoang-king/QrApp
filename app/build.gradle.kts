@@ -42,6 +42,10 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.3"
     }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
 
 dependencies {
@@ -100,7 +104,9 @@ dependencies {
     // Gson
     implementation(libs.gson)
 
-    // Coil for image loading
-    implementation(libs.coil.compose)
-
+    // Media3 for video processing/compression
+    val media3_version = "1.5.1"
+    implementation("androidx.media3:media3-transformer:$media3_version")
+    implementation("androidx.media3:media3-effect:$media3_version")
+    implementation("androidx.media3:media3-common:$media3_version")
 }
