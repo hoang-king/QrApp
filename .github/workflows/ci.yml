@@ -1,4 +1,3 @@
-# CI workflow for Android project
 name: Android CI
 
 on:
@@ -22,12 +21,22 @@ jobs:
       - name: Grant permission
         run: chmod +x gradlew
 
+      # 👉 LINT
       - name: Run Lint
+        id: lint
         run: ./gradlew lint
 
+      # 👉 UNIT TEST
+      - name: Run Unit Test
+        id: test
+        run: ./gradlew testDebugUnitTest
+
+      # 👉 BUILD
       - name: Build
+        id: build
         run: ./gradlew build
 
+      # 👉 SUCCESS
       - name: Notify Discord Success
         if: success()
         run: |
@@ -35,9 +44,40 @@ jobs:
           -d "{\"content\": \"✅ SUCCESS: ${{ github.repository }}\"}" \
           ${{ secrets.DISCORD_WEBHOOK }}
 
+      # 👉 FAIL (xịn nhất ở đây)
       - name: Notify Discord Fail
         if: failure()
         run: |
+          MESSAGE="❌ FAILED: ${{ github.repository }}\n"
+
+          # Check từng step
+          if [ "${{ steps.lint.outcome }}" == "failure" ]; then
+            MESSAGE="$MESSAGE\n🚨 Lint failed"
+          fi
+
+          if [ "${{ steps.test.outcome }}" == "failure" ]; then
+            MESSAGE="$MESSAGE\n🧪 Unit Test failed"
+          fi
+
+          if [ "${{ steps.build.outcome }}" == "failure" ]; then
+            MESSAGE="$MESSAGE\n🔥 Build failed"
+          fi
+
+          # Lấy log lỗi cuối
+          LOG=$(tail -n 20 $(find . -name "*.log" 2>/dev/null) 2>/dev/null || echo "No log found")
+
+          MESSAGE="$MESSAGE\n\n🔍 Last logs:\n\`\`\`\n$LOG\n\`\`\`\"
+
           curl -H "Content-Type: application/json" \
-          -d "{\"content\": \"❌ FAILED: ${{ github.repository }}\"}" \
+          -d "{\"content\": \"$MESSAGE\"}" \
           ${{ secrets.DISCORD_WEBHOOK }}
+
+      # 👉 Upload full report nếu fail
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/
+            **/build/reports/
