@@ -42,9 +42,11 @@ fun QRGeneratorNavigation(
             is QRGeneratorUiState.HistoryList -> {
                 QRHistoryScreen(
                     items = uiState.items,
+                    searchQuery = uiState.searchQuery,
                     isLoading = uiState.isLoading,
                     selectedDetail = uiState.selectedDetail,
                     onItemClick = { qrCode -> onEvent(QRGeneratorEvent.ViewHistoryDetail(qrCode)) },
+                    onSearch = { query -> onEvent(QRGeneratorEvent.SearchHistory(query)) },
                     onDeleteItem = { id -> onEvent(QRGeneratorEvent.DeleteHistoryItem(id)) },
                     onDismissDetail = { onEvent(QRGeneratorEvent.DismissHistoryDetail) },
                     onBack = { onEvent(QRGeneratorEvent.Reset) }

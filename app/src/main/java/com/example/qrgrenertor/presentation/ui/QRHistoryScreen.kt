@@ -42,9 +42,11 @@ import java.util.Locale
 @Composable
 fun QRHistoryScreen(
     items: List<QRHistory>,
+    searchQuery: String,
     isLoading: Boolean,
     selectedDetail: QRCode?,
     onItemClick: (QRCode) -> Unit,
+    onSearch: (String) -> Unit,
     onDeleteItem: (String) -> Unit,
     onDismissDetail: () -> Unit,
     onBack: () -> Unit
@@ -93,6 +95,35 @@ fun QRHistoryScreen(
                 )
             }
         }
+
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearch,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("Tìm kiếm tên hoặc nội dung...", color = QRAppColors.TextTertiary) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = QRAppColors.PrimaryStart) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { onSearch("") }) {
+                        Icon(Icons.Default.Close, contentDescription = "Xóa", tint = QRAppColors.TextSecondary)
+                    }
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = QRAppColors.DarkCard,
+                unfocusedContainerColor = QRAppColors.DarkCard,
+                focusedBorderColor = QRAppColors.PrimaryStart,
+                unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                cursorColor = QRAppColors.PrimaryStart,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White
+            ),
+            singleLine = true
+        )
 
         when {
             isLoading -> {

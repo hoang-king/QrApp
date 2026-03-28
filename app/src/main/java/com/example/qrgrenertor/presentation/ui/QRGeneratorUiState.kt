@@ -30,6 +30,7 @@ sealed class QRGeneratorUiState {
     data class Error(val message: String) : QRGeneratorUiState()
     data class HistoryList(
         val items: List<QRHistory> = emptyList(),
+        val searchQuery: String = "",
         val selectedDetail: QRCode? = null,
         val isLoading: Boolean = false
     ) : QRGeneratorUiState()
@@ -47,6 +48,7 @@ sealed class QRGeneratorEvent {
     object SaveQR : QRGeneratorEvent()
     object Reset : QRGeneratorEvent()
     object NavigateToHistory : QRGeneratorEvent()
+    data class SearchHistory(val query: String) : QRGeneratorEvent()
     object NavigateToSettings : QRGeneratorEvent()
     data class ViewHistoryDetail(val qrCode: QRCode) : QRGeneratorEvent()
     object DismissHistoryDetail : QRGeneratorEvent()

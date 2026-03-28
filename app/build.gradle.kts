@@ -46,6 +46,10 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
+
+    tasks.withType<Test> {
+        useJUnitPlatform()
+    }
 }
 
 dependencies {
@@ -63,6 +67,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.compose.ui)
     testImplementation(libs.junit)
+    testImplementation(libs.junit.jupiter.api)
+    testImplementation(libs.junit.jupiter.params)
+    testRuntimeOnly(libs.junit.jupiter.engine)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -41,6 +41,7 @@ class QRGeneratorViewModel @Inject constructor(
     private var currentDesign: QRDesign = QRDesign()
     private var currentQRCode: QRCode? = null
     private var isCurrentSaved: Boolean = false
+    private var fullHistoryList: List<QRHistory> = emptyList()
 
     fun onEvent(event: QRGeneratorEvent) {
         when (event) {
@@ -54,10 +55,30 @@ class QRGeneratorViewModel @Inject constructor(
             QRGeneratorEvent.SaveQR -> handleSaveQR()
             QRGeneratorEvent.Reset -> handleReset()
             QRGeneratorEvent.NavigateToHistory -> handleNavigateToHistory()
+            is QRGeneratorEvent.SearchHistory -> handleSearchHistory(event.query)
             QRGeneratorEvent.NavigateToSettings -> _uiState.value = QRGeneratorUiState.Settings
             is QRGeneratorEvent.ViewHistoryDetail -> handleViewHistoryDetail(event.qrCode)
             QRGeneratorEvent.DismissHistoryDetail -> handleDismissHistoryDetail()
             is QRGeneratorEvent.DeleteHistoryItem -> handleDeleteHistoryItem(event.id)
+        }
+    }
+
+    private fun handleSearchHistory(query: String) {
+        val currentState = _uiState.value
+        if (currentState is QRGeneratorUiState.HistoryList) {
+            val filteredItems = if (query.isEmpty()) {
+                fullHistoryList
+            } else {
+                fullHistoryList.filter { 
+                    it.qrCode.name.contains(query, ignoreCase = true) || 
+                    it.qrCode.content.contains(query, ignoreCase = true) ||
+                    it.qrCode.sourceType.displayName.contains(query, ignoreCase = true)
+                }
+            }
+            _uiState.value = currentState.copy(
+                items = filteredItems,
+                searchQuery = query
+            )
         }
     }
 
@@ -199,12 +220,14 @@ class QRGeneratorViewModel @Inject constructor(
             val result = getQRHistoryUseCase()
             when (result) {
                 is Result.Success -> {
+                    fullHistoryList = result.data
                     _uiState.value = QRGeneratorUiState.HistoryList(
                         items = result.data,
                         isLoading = false
                     )
                 }
                 is Result.Error -> {
+                    fullHistoryList = emptyList()
                     _uiState.value = QRGeneratorUiState.HistoryList(
                         items = emptyList(),
                         isLoading = false
@@ -235,10 +258,16 @@ class QRGeneratorViewModel @Inject constructor(
             if (result is Result.Success) {
                 val historyResult = getQRHistoryUseCase()
                 if (historyResult is Result.Success) {
-                    _uiState.value = QRGeneratorUiState.HistoryList(
-                        items = historyResult.data,
-                        isLoading = false
-                    )
+                    fullHistoryList = historyResult.data
+                    val currentState = _uiState.value
+                    if (currentState is QRGeneratorUiState.HistoryList) {
+                        handleSearchHistory(currentState.searchQuery)
+                    } else {
+                        _uiState.value = QRGeneratorUiState.HistoryList(
+                            items = historyResult.data,
+                            isLoading = false
+                        )
+                    }
                 }
             }
         }
