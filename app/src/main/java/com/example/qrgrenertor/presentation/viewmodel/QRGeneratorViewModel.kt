@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.qrgrenertor.domain.model.QRCode
 import com.example.qrgrenertor.domain.model.QRDesign
+import com.example.qrgrenertor.domain.model.QRHistory
 import com.example.qrgrenertor.domain.model.QRSourceType
 import com.example.qrgrenertor.domain.model.Result
 import com.example.qrgrenertor.domain.usecase.GenerateQRUseCase
