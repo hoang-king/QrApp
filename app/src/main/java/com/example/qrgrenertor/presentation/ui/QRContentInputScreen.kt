@@ -35,6 +35,7 @@ import com.example.qrgrenertor.presentation.ui.components.GlassCard
 import com.example.qrgrenertor.presentation.ui.components.GradientButton
 import com.example.qrgrenertor.presentation.ui.components.StepProgressBar
 import com.example.qrgrenertor.presentation.ui.theme.QRAppColors
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -79,6 +80,25 @@ fun QRContentInputScreen(
     val markerState = rememberMarkerState(position = LatLng(21.0285, 105.8542))
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(21.0285, 105.8542), 15f)
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        if (granted) {
+            scope.launch {
+                LocationManager.getCurrentLocation(context)?.let { location ->
+                    latitude = String.format(Locale.US, "%.6f", location.latitude)
+                    longitude = String.format(Locale.US, "%.6f", location.longitude)
+                    val newLatLng = LatLng(location.latitude, location.longitude)
+                    markerState.position = newLatLng
+                    cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(newLatLng, 15f))
+                }
+            }
+        } else {
+            Toast.makeText(context, "Cần quyền truy cập vị trí", Toast.LENGTH_SHORT).show()
+        }
     }
 
     var selectedFileName by remember { mutableStateOf("") }
@@ -206,6 +226,24 @@ fun QRContentInputScreen(
                                     longitude = String.format(Locale.US, "%.6f", latLng.longitude)
                                     markerState.position = latLng
                                 }) { Marker(state = markerState, title = "Vị trí") }
+                                
+                                // Nút lấy vị trí hiện tại
+                                FloatingActionButton(
+                                    onClick = {
+                                        locationPermissionLauncher.launch(
+                                            arrayOf(
+                                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                                android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                            )
+                                        )
+                                    },
+                                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).size(44.dp),
+                                    containerColor = QRAppColors.PrimaryStart,
+                                    contentColor = Color.White,
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Outlined.MyLocation, contentDescription = "Vị trí của tôi", modifier = Modifier.size(20.dp))
+                                }
                             }
                         }
                         QRSourceType.IMAGE, QRSourceType.MUSIC, QRSourceType.PDF, QRSourceType.VIDEO -> {
